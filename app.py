@@ -46,7 +46,6 @@ st.sidebar.title("🛡️ Navigation")
 page = st.sidebar.radio("Go to", [
     "Home",
     "Upload Data",
-    "Live Detection",
     "Model Insights",
     "About"
 ])
@@ -142,25 +141,6 @@ elif page == "Upload Data":
                     "text/csv"
                 )
 
-# -------------------------------
-# LIVE DETECTION (SIMULATION)
-# -------------------------------
-elif page == "Live Detection":
-    st.title("📡 Live Traffic Simulation")
-    st.warning("⚠️ This is a simulation (not real model prediction)")
-
-    if st.button("Start Monitoring"):
-        for i in range(5):
-            time.sleep(1)
-
-            attack = np.random.choice(
-                ["SYN Flood", "UDP Flood", "ICMP Flood", "Slowloris", "Normal"]
-            )
-
-            if attack == "Normal":
-                st.success("✅ Traffic Normal")
-            else:
-                st.error(f"⚠️ Attack Detected: {attack}")
 
 # -------------------------------
 # MODEL INSIGHTS
