@@ -23,12 +23,21 @@ def load_components():
         model = joblib.load("model.pkl")
         scaler = joblib.load("scaler.pkl")
         feature_names = joblib.load("features.pkl")
-        return model, scaler, feature_names
+
+        # ✅ Load accuracy (new)
+        try:
+            accuracy = joblib.load("accuracy.pkl")
+        except:
+            accuracy = None
+
+        return model, scaler, feature_names, accuracy
+
     except Exception as e:
         st.error(f"Error loading model files: {e}")
-        return None, None, None
+        return None, None, None, None
 
-model, scaler, feature_names = load_components()
+
+model, scaler, feature_names, accuracy = load_components()
 
 # -------------------------------
 # SIDEBAR
@@ -71,6 +80,13 @@ if page == "Home":
 # -------------------------------
 elif page == "Upload Data":
     st.title("📂 Upload Network Data")
+
+    # ✅ Show model accuracy
+    st.write("### 📊 Model Accuracy")
+    if accuracy is not None:
+        st.metric("Accuracy", f"{accuracy:.2%}")
+    else:
+        st.warning("⚠️ Accuracy not available")
 
     file = st.file_uploader("Upload CSV file", type=["csv"])
 
@@ -131,7 +147,6 @@ elif page == "Upload Data":
 # -------------------------------
 elif page == "Live Detection":
     st.title("📡 Live Traffic Simulation")
-
     st.warning("⚠️ This is a simulation (not real model prediction)")
 
     if st.button("Start Monitoring"):
@@ -160,11 +175,15 @@ elif page == "Model Insights":
     else:
         st.error("❌ Model Not Loaded")
 
+    # ✅ Show accuracy here also
+    if accuracy is not None:
+        st.success(f"🎯 Model Accuracy: {accuracy:.2%}")
+
     st.write("### Feature Names Used")
     if feature_names is not None:
         st.write(feature_names)
 
-    st.write("### Sample Feature Importance (from training)")
+    st.write("### Feature Importance")
 
     try:
         importance = model.feature_importances_
