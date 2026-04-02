@@ -15,17 +15,20 @@ st.set_page_config(
 )
 
 # -------------------------------
-# LOAD MODEL (replace with your model)
+# LOAD MODEL COMPONENTS
 # -------------------------------
 @st.cache_resource
-def load_model():
+def load_components():
     try:
-        model = joblib.load("model.pkl")  # your trained model
-        return model
-    except:
-        return None
+        model = joblib.load("model.pkl")
+        scaler = joblib.load("scaler.pkl")
+        feature_names = joblib.load("features.pkl")
+        return model, scaler, feature_names
+    except Exception as e:
+        st.error(f"Error loading model files: {e}")
+        return None, None, None
 
-model = load_model()
+model, scaler, feature_names = load_components()
 
 # -------------------------------
 # SIDEBAR
@@ -81,14 +84,26 @@ elif page == "Upload Data":
             with st.spinner("Analyzing network traffic..."):
                 time.sleep(2)
 
-                if model:
-                    predictions = model.predict(df)
+                if model is not None and scaler is not None and feature_names is not None:
+
+                    try:
+                        # ✅ Match training features
+                        df_model = df.copy()
+                        df_model = df_model.reindex(columns=feature_names, fill_value=0)
+
+                        # ✅ Apply scaling
+                        df_scaled = scaler.transform(df_model)
+
+                        # ✅ Predict
+                        predictions = model.predict(df_scaled)
+
+                    except Exception as e:
+                        st.error(f"Prediction error: {e}")
+                        predictions = ["Error"] * len(df)
+
                 else:
-                    # Dummy predictions if model not available
-                    predictions = np.random.choice(
-                        ["SYN Flood", "UDP Flood", "ICMP Flood", "Slowloris", "Normal"],
-                        size=len(df)
-                    )
+                    st.error("Model not loaded properly!")
+                    predictions = ["No Model"] * len(df)
 
                 df["Prediction"] = predictions
 
@@ -96,6 +111,11 @@ elif page == "Upload Data":
 
                 st.write("### 📊 Results")
                 st.dataframe(df.head(20))
+
+                # 📊 Attack distribution
+                st.write("### 📊 Attack Distribution")
+                attack_counts = pd.Series(predictions).value_counts()
+                st.bar_chart(attack_counts)
 
                 # Download option
                 csv = df.to_csv(index=False).encode("utf-8")
@@ -107,10 +127,12 @@ elif page == "Upload Data":
                 )
 
 # -------------------------------
-# LIVE DETECTION
+# LIVE DETECTION (SIMULATION)
 # -------------------------------
 elif page == "Live Detection":
     st.title("📡 Live Traffic Simulation")
+
+    st.warning("⚠️ This is a simulation (not real model prediction)")
 
     if st.button("Start Monitoring"):
         for i in range(5):
@@ -121,7 +143,7 @@ elif page == "Live Detection":
             )
 
             if attack == "Normal":
-                st.success(f"✅ Traffic Normal")
+                st.success("✅ Traffic Normal")
             else:
                 st.error(f"⚠️ Attack Detected: {attack}")
 
@@ -131,20 +153,53 @@ elif page == "Live Detection":
 elif page == "Model Insights":
     st.title("📊 Model Insights")
 
-    st.write("### Accuracy")
-    st.metric("Model Accuracy", "95%")
+    st.write("### Model Status")
 
-    st.write("### Feature Importance (Sample)")
+    if model is not None:
+        st.success("✅ Model Loaded Successfully")
+    else:
+        st.error("❌ Model Not Loaded")
 
-    features = ["pkt_size", "flow_duration", "src_bytes", "dst_bytes"]
-    importance = [0.4, 0.3, 0.2, 0.1]
+    st.write("### Feature Names Used")
+    if feature_names is not None:
+        st.write(feature_names)
 
-    fig, ax = plt.subplots()
-    ax.bar(features, importance)
-    ax.set_title("Feature Importance")
+    st.write("### Sample Feature Importance (from training)")
 
-    st.pyplot(fig)
+    try:
+        importance = model.feature_importances_
+        idx = np.argsort(importance)[::-1]
 
-    st.info("Model uses machine learning to classify network traffic patterns.")
+        fig, ax = plt.subplots()
+        ax.bar(range(len(feature_names)), importance[idx])
+        ax.set_xticks(range(len(feature_names)))
+        ax.set_xticklabels([feature_names[i] for i in idx], rotation=45)
+        ax.set_title("Feature Importance")
 
+        st.pyplot(fig)
 
+    except:
+        st.info("Feature importance not available.")
+
+# -------------------------------
+# ABOUT
+# -------------------------------
+elif page == "About":
+    st.title("ℹ️ About This Project")
+
+    st.write("""
+    This project is a Machine Learning-based Network Traffic Analyzer designed to detect and classify
+    multiple types of DDoS attacks.
+
+    🔹 Built using:
+    - Random Forest Classifier
+    - Streamlit Web App
+    - Real network traffic datasets
+
+    🔹 Features:
+    - Upload CSV for batch detection
+    - Attack classification
+    - Visualization of results
+
+    Developed as a practical cybersecurity + ML project.
+    """)
